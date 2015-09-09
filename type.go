@@ -142,6 +142,17 @@ func (m Message) Command() string {
 	return name[j+1:]
 }
 
+// Args returns all words after the first word in the message text. First word
+// is meant to be the command name and can be accessed with Command method.
+func (m Message) Args() []string {
+	args := m.Text
+	i := strings.Index(args, " ")
+	if i < 0 {
+		return nil
+	}
+	return strings.Fields(args[i+1:])
+}
+
 type File struct {
 	// File is embedded in most of the types. So a `File` prefix is used
 	FileID   string `json:"file_id"`
