@@ -10,7 +10,9 @@ go get github.com/igungor/tlbot
 
 ## usage
 
-See echobot in `cmd/echobot/main.go`
+[](http://godoc.org/github.com/igungor/tlbot)
+
+Also look at [echobot](https://github.com/igungor/tlbot/tree/master/cmd/echobot)
 
 ## license
 
