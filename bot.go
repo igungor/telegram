@@ -38,9 +38,8 @@ func New(token string) Bot {
 }
 
 // Listen listens on the given address addr and returns a read-only Message
-// channel. Also returns an error if there is an error during reading incoming
-// bot messages.
-func (b Bot) Listen(addr string) (<-chan Message, error) {
+// channel.
+func (b Bot) Listen(addr string) <-chan Message {
 	messageCh := make(chan Message)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
@@ -62,12 +61,12 @@ func (b Bot) Listen(addr string) (<-chan Message, error) {
 		os.Exit(1)
 	}()
 
-	return messageCh, nil
+	return messageCh
 }
 
 // SetWebhook assigns bot's webhook url with the given url.
-func (b Bot) SetWebhook(hook string) error {
-	urlvalues := url.Values{"url": {hook}}
+func (b Bot) SetWebhook(webhook string) error {
+	urlvalues := url.Values{"url": {webhook}}
 
 	resp, err := http.PostForm(baseURL+b.token+"/setWebhook", urlvalues)
 	if err != nil {
