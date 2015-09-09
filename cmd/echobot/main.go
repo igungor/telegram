@@ -39,7 +39,6 @@ func main() {
 		log.Printf("missing webhook parameter\n\n")
 		flag.Usage()
 	}
-
 	if *token == "" {
 		log.Printf("missing token parameter\n\n")
 		flag.Usage()
@@ -51,18 +50,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-	ch, err := b.Listen(net.JoinHostPort(*host, *port))
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	// spew.Dump uses String() method if a type implements Stringer interface.
 	// Since Message type is a Stringer, enable more verbose output by
 	// disabling this behaviour.
 	if *debug {
 		spew.Config.DisableMethods = true
 	}
-	for msg := range ch {
+
+	messages := b.Listen(net.JoinHostPort(*host, *port))
+	for msg := range messages {
 		spew.Dump(msg)
 		err := b.SendMessage(msg.From, msg.Text, tlbot.ModeNone, false, nil)
 		if err != nil {
