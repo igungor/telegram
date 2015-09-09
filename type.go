@@ -3,6 +3,7 @@ package tlbot
 import (
 	"bytes"
 	"fmt"
+	"strings"
 )
 
 type Action string
@@ -121,6 +122,24 @@ func (m Message) String() string {
 	buf.WriteString(fmt.Sprintf("Message: %q\n", m.Text))
 
 	return buf.String()
+}
+
+// Command returns the command's name: the first word in the message text.
+// If message text doesn't start with a slash-character, it returns empty
+// string. If it does, it returns the command name, without a leading
+// slash-character.
+func (m Message) Command() string {
+	name := m.Text
+	i := strings.Index(name, " ")
+	if i >= 0 {
+		name = name[:i]
+	}
+
+	j := strings.Index(name, "/")
+	if j < 0 {
+		return ""
+	}
+	return name[j+1:]
 }
 
 type File struct {
