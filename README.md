@@ -10,7 +10,7 @@ go get github.com/igungor/tlbot
 
 ## usage
 
-[](http://godoc.org/github.com/igungor/tlbot)
+[Documentation](http://godoc.org/github.com/igungor/tlbot)
 
 Also look at [echobot](https://github.com/igungor/tlbot/tree/master/cmd/echobot)
 
