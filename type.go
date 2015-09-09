@@ -112,6 +112,7 @@ type Message struct {
 	GroupChatCreated bool `json:"group_chat_created"`
 }
 
+// String returns a human-readable representation of Message.
 func (m Message) String() string {
 	var buf bytes.Buffer
 	if m.From.IsGroupChat() {
