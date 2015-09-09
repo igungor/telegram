@@ -129,13 +129,13 @@ type File struct {
 	FileSize int    `json:"file_size"`
 
 	// URL to the file (custom field)
-	FileURL string
+	FileURL string `json:"-"`
 
 	// Path to the file on local filesystem (custom field)
-	FilePath string
+	FilePath string `json:"-"`
 }
 
-// Exists reports whether the file is already in Telegram servers.
+// Exists reports whether the file is already at Telegram servers.
 func (f File) Exists() bool { return f.FileID != "" }
 
 // IsLocal reports whether the file is the local filesystem.
