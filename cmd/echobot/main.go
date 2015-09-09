@@ -21,9 +21,9 @@ var (
 )
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "testbot is an echo server for testing Telegram bots\n\n")
+	fmt.Fprintf(os.Stderr, "echobot is an echo server for testing Telegram bots\n\n")
 	fmt.Fprintf(os.Stderr, "usage:\n")
-	fmt.Fprintf(os.Stderr, "  testbot -token <insert-your-telegrambot-token> -url <insert-your-webhook-url>\n\n")
+	fmt.Fprintf(os.Stderr, "  echobot -token <insert-your-telegrambot-token> -url <insert-your-webhook-url>\n\n")
 	fmt.Fprintf(os.Stderr, "flags:\n")
 	flag.PrintDefaults()
 	os.Exit(2)
@@ -31,7 +31,7 @@ func usage() {
 
 func main() {
 	log.SetFlags(0)
-	log.SetPrefix("testbot: ")
+	log.SetPrefix("echobot: ")
 	flag.Usage = usage
 	flag.Parse()
 
