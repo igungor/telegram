@@ -120,15 +120,14 @@ func (m Message) String() string {
 	} else {
 		buf.WriteString(fmt.Sprintf(`From user: "%v %v (%v)"  `, m.From.FirstName, m.From.LastName, m.From.Username))
 	}
-	buf.WriteString(fmt.Sprintf("Message: %q\n", m.Text))
+	buf.WriteString(fmt.Sprintf("Message: %q", m.Text))
 
 	return buf.String()
 }
 
-// Command returns the command's name: the first word in the message text.
-// If message text doesn't start with a slash-character, it returns empty
-// string. If it does, it returns the command name, without a leading
-// slash-character.
+// Command returns the command's name: the first word in the message text. If
+// message text starts with a `/`, function returns the command name, or else
+// empty string.
 func (m Message) Command() string {
 	name := m.Text
 	i := strings.Index(name, " ")
