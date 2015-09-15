@@ -7,7 +7,6 @@ import (
 	"net"
 	"os"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/igungor/tlbot"
 )
 
@@ -17,7 +16,6 @@ var (
 	webhook = flag.String("webhook", "", "webhook url")
 	host    = flag.String("host", "127.0.0.1", "host to listen to")
 	port    = flag.String("port", "1986", "port to listen to")
-	debug   = flag.Bool("d", false, "debug mode (*very* verbose)")
 )
 
 func usage() {
@@ -50,19 +48,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// spew.Dump uses String() method if a type implements Stringer interface.
-	// Since Message type is a Stringer, enable more verbose output by
-	// disabling this behaviour.
-	if *debug {
-		spew.Config.DisableMethods = true
-	}
-
 	messages := b.Listen(net.JoinHostPort(*host, *port))
 	for msg := range messages {
-		spew.Dump(msg)
-		err := b.SendMessage(msg.From, msg.Text, tlbot.ModeNone, false, nil)
-		if err != nil {
-			log.Println(err)
-		}
+		go func() {
+			// echo the message as *bold*
+			txt := "*" + msg.Text + "*"
+			err := b.SendMessage(msg.Chat, txt, tlbot.ModeMarkdown, false, nil)
+			if err != nil {
+				log.Printf("Error while sending message. Err: %v\n", err)
+			}
+		}()
 	}
 }
