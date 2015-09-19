@@ -229,31 +229,49 @@ func (b Bot) SendPhoto(recipient User, photo Photo, caption string, opts *SendOp
 }
 
 // TODO(ig): implement
+//
+// SendAudio sends audio files, if you want Telegram clients to display
+// them in the music player. audio must be in the .mp3 format and must not
+// exceed 50 MB in size.
 func (b Bot) sendAudio(recipient User, audio Audio, opts *SendOptions) error {
 	panic("not implemented yet")
 }
 
 // TODO(ig): implement
+//
+// SendDocument sends general files. Documents must not exceed 50 MB in size.
 func (b Bot) sendDocument(recipient User, document Document, opts *SendOptions) error {
 	panic("not implemented yet")
 }
 
 // TODO(ig): implement
+//
+//SendSticker sends stickers with .webp extensions.
 func (b Bot) sendSticker(recipient User, sticker Sticker, opts *SendOptions) error {
 	panic("not implemented yet")
 }
 
 // TODO(ig): implement
+//
+// SendVideo sends video files. Telegram clients support mp4 videos (other
+// formats may be sent as Document). Video files must not exceed 50 MB in size.
 func (b Bot) sendVideo(recipient User, video Video, opts *SendOptions) error {
 	panic("not implemented yet")
 }
 
 // TODO(ig): implement
+//
+// SendVoice sends audio files, if you want Telegram clients to display
+// the file as a playable voice message. For this to work, your audio must be
+// in an .ogg file encoded with OPUS (other formats may be sent as Audio or
+// Document). audio must not exceed 50 MB in size.
 func (b Bot) sendVoice(recipient User, audio Audio, opts *SendOptions) error {
 	panic("not implemented yet")
 }
 
 // TODO(ig): implement
+//
+// SendLocation sends location point on the map.
 func (b Bot) sendLocation(recipient User, location Location, opts *SendOptions) error {
 	panic("not implemented yet")
 }
