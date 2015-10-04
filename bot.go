@@ -101,6 +101,11 @@ func (b Bot) SendMessage(recipient User, message string, mode ParseMode, preview
 		"disable_web_page_preview": {strconv.FormatBool(!preview)},
 	}
 
+	if opts != nil && (opts.ReplyMarkup.Keyboard != nil || opts.ReplyMarkup.ForceReply || opts.ReplyMarkup.Hide) {
+		replymarkup, _ := json.Marshal(opts.ReplyMarkup)
+		urlvalues.Set("reply_markup", string(replymarkup))
+	}
+
 	resp, err := http.PostForm(baseURL+b.token+"/sendMessage", urlvalues)
 	if err != nil {
 		return err
@@ -109,8 +114,8 @@ func (b Bot) SendMessage(recipient User, message string, mode ParseMode, preview
 
 	var r struct {
 		OK      bool   `json:"ok"`
-		ErrCode int    `json:"errorcode"`
 		Desc    string `json:"description"`
+		ErrCode int    `json:"errorcode"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
@@ -170,36 +175,6 @@ func (b Bot) SendPhoto(recipient User, photo Photo, caption string, opts *SendOp
 	}
 
 	w.WriteField("chat_id", strconv.Itoa(recipient.ID))
-
-	if opts != nil {
-		switch opts.ReplyMarkup.(type) {
-		case ReplyKeyboardMarkup:
-			b, err := json.Marshal(opts.ReplyMarkup)
-			if err != nil {
-				log.Printf("error while encoding keyboard: %v\n", err)
-				return err
-			}
-			w.WriteField("reply_markup", string(b))
-
-		case ReplyKeyboardHide:
-			b, err := json.Marshal(opts.ReplyMarkup)
-			if err != nil {
-				log.Printf("error while encoding keyboard: %v\n", err)
-				return err
-			}
-			w.WriteField("reply_markup", string(b))
-
-		case ForceReply:
-			b, err := json.Marshal(opts.ReplyMarkup)
-			if err != nil {
-				log.Printf("error while encoding keyboard: %v\n", err)
-				return err
-			}
-			w.WriteField("reply_markup", string(b))
-
-		default:
-		}
-	}
 
 	if err := w.Close(); err != nil {
 		return err
@@ -311,8 +286,7 @@ type SendOptions struct {
 	// If the message is a reply, ID of the original message
 	ReplyToMessageID int
 
-	// ReplyKeyboardMarkup || ReplyKeyboardHide || ForceReply
-	ReplyMarkup interface{}
+	ReplyMarkup ReplyMarkup
 }
 
 func getMe(token string) (User, error) {

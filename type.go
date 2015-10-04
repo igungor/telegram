@@ -115,10 +115,10 @@ type Message struct {
 // String returns a human-readable representation of Message.
 func (m Message) String() string {
 	var buf bytes.Buffer
-	if m.From.IsGroupChat() {
-		buf.WriteString(fmt.Sprintf("From group: %q  ", m.From.Title))
+	if m.Chat.IsGroupChat() {
+		buf.WriteString(fmt.Sprintf(`From user("%v %v [%v - %v] in Group(%v [%v])" `, m.From.FirstName, m.From.LastName, m.From.Username, m.From.ID, m.Chat.Title, m.Chat.ID))
 	} else {
-		buf.WriteString(fmt.Sprintf(`From user: "%v %v (%v)"  `, m.From.FirstName, m.From.LastName, m.From.Username))
+		buf.WriteString(fmt.Sprintf(`From user("%v %v [%v - %v])" `, m.From.FirstName, m.From.LastName, m.From.Username, m.From.ID))
 	}
 	buf.WriteString(fmt.Sprintf("Message: %q", m.Text))
 
@@ -238,23 +238,11 @@ type Contact struct {
 	UserID      string `json:"user_id"`
 }
 
-type ReplyKeyboardMarkup struct {
-	Keyboard  [][]string `json:"keyboard"`
-	Resize    bool       `json:"resize_keyboard"`
-	OneTime   bool       `json:"one_time_keyboard"`
-	Selective bool       `json:"selective"`
-}
-
-// ReplyKeyboardHide requests Telegram clients to hide the current custom
-// keyboard and display the default letter-keyboard
-type ReplyKeyboardHide struct {
-	Hide      bool `json:"hide_keyboard"`
-	Selective bool `json:"selective"`
-}
-
-// ForceReply forces Telegram clients to display a reply interface to the user
-// (act as if the user has selected the bot‘s message and tapped ’Reply').
-type ForceReply struct {
-	ForceReply bool `json:"force_reply"`
-	Selective  bool `json:"selective"`
+type ReplyMarkup struct {
+	Keyboard   [][]string `json:"keyboard,omitempty"`
+	Resize     bool       `json:"resize_keyboard,omitempty"`
+	OneTime    bool       `json:"one_time_keyboard,omitempty"`
+	Selective  bool       `json:"selective,omitempty"`
+	Hide       bool       `json:"hide_keyboard,omitempty"`
+	ForceReply bool       `json:"force_reply,omitempty"`
 }
