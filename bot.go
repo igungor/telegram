@@ -42,7 +42,8 @@ func New(token string) Bot {
 func (b Bot) Listen(addr string) <-chan Message {
 	messageCh := make(chan Message)
 
-	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		defer w.WriteHeader(http.StatusOK)
 
 		var u Update
@@ -56,7 +57,7 @@ func (b Bot) Listen(addr string) <-chan Message {
 
 	go func() {
 		// ListenAndServe always returns non-nil error
-		err := http.ListenAndServe(addr, nil)
+		err := http.ListenAndServe(addr, mux)
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}()
