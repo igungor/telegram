@@ -145,7 +145,7 @@ func (m Message) Command() string {
 // Args returns all words after the first word in the message text. First word
 // is meant to be the command name and can be accessed with Command method.
 func (m Message) Args() []string {
-	args := m.Text
+	args := strings.TrimSpace(m.Text)
 	i := strings.Index(args, " ")
 	if i < 0 {
 		return nil
