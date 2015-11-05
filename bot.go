@@ -254,9 +254,9 @@ func (b Bot) sendLocation(recipient User, location Location, opts *SendOptions) 
 
 // SendChatAction broadcasts type of action to recipient, such as `typing`,
 // `uploading a photo` etc.
-func (b Bot) SendChatAction(recipient User, action Action) error {
+func (b Bot) SendChatAction(recipient int, action Action) error {
 	urlvalues := url.Values{
-		"chat_id": {strconv.Itoa(recipient.ID)},
+		"chat_id": {strconv.Itoa(recipient)},
 		"action":  {string(action)},
 	}
 

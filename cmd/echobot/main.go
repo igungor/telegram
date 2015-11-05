@@ -53,7 +53,7 @@ func main() {
 		go func() {
 			// echo the message as *bold*
 			txt := "*" + msg.Text + "*"
-			err := b.SendMessage(msg.Chat, txt, tlbot.ModeMarkdown, false, nil)
+			err := b.SendMessage(msg.Chat.ID, txt, tlbot.ModeMarkdown, false, nil)
 			if err != nil {
 				log.Printf("Error while sending message. Err: %v\n", err)
 			}
