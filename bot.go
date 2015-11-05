@@ -94,9 +94,9 @@ func (b Bot) SetWebhook(webhook string) error {
 
 // SendMessage sends text message to the recipient. Callers can send plain
 // text or markdown messages by setting mode parameter.
-func (b Bot) SendMessage(recipient User, message string, mode ParseMode, preview bool, opts *SendOptions) error {
+func (b Bot) SendMessage(recipient int, message string, mode ParseMode, preview bool, opts *SendOptions) error {
 	urlvalues := url.Values{
-		"chat_id":                  {strconv.Itoa(recipient.ID)},
+		"chat_id":                  {strconv.Itoa(recipient)},
 		"text":                     {message},
 		"parse_mode":               {string(mode)},
 		"disable_web_page_preview": {strconv.FormatBool(!preview)},
@@ -142,7 +142,7 @@ func (b Bot) forwardMessage(recipient User, message Message) error {
 //  photo := bot.Photo{FileURL: "http://i.imgur.com/6S9naG6.png"}
 //  err := b.SendPhoto(recipient, photo, "sample image", nil)
 //
-func (b Bot) SendPhoto(recipient User, photo Photo, caption string, opts *SendOptions) error {
+func (b Bot) SendPhoto(recipient int, photo Photo, caption string, opts *SendOptions) error {
 	// TODO(ig): implement sending already sent photos
 	if photo.Exists() {
 		panic("files reside in telegram servers can not be sent for now.")
@@ -175,7 +175,7 @@ func (b Bot) SendPhoto(recipient User, photo Photo, caption string, opts *SendOp
 		return err
 	}
 
-	w.WriteField("chat_id", strconv.Itoa(recipient.ID))
+	w.WriteField("chat_id", strconv.Itoa(recipient))
 
 	if err := w.Close(); err != nil {
 		return err
