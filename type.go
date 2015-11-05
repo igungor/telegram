@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"time"
 )
 
 type Action string
@@ -21,19 +22,23 @@ const (
 // User represents a Telegram user or bot.
 type User struct {
 	ID        int    `json:"id"`
+	Username  string `json:"username"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
-	Username  string `json:"username"`
+}
 
-	Title string `json:"title"`
+// Chat represents a Telegram chat.
+type Chat struct {
+	ID        int    `json:"id"`
+	Type      string `json:"type"`
+	Title     string `json:"title"`
+	Username  string `json:"username"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
 }
 
 // IsGroupChat reports whether the message is originally sent from a chat group.
-//
-// Telegram can send User or GroupChat interchangebly depending on the
-// original sender. If title is not empty, it means the message is
-// originally sent from a chat group.
-func (u User) IsGroupChat() bool { return u.Title != "" }
+func (c Chat) IsGroupChat() bool { return c.Title == "group" }
 
 type Update struct {
 	ID      int     `json:"update_id"`
@@ -45,15 +50,15 @@ type Message struct {
 	// Unique message identifier
 	ID int `json:"message_id"`
 
-	// Sender
+	// Sender (optional. can be empty for messages sent to channel)
 	From User `json:"from"`
 
 	// Date is when the message was sent in Unix time
-	Date int `json:"date"`
+	Unixtime int `json:"date"`
 
-	// Conversation the message belongs to — user in case of a private message,
-	// GroupChat in case of a group
-	Chat User `json:"chat"`
+	// Conversation the message belongs to — user in case of a private chat,
+	// group in case of a group chat
+	Chat Chat `json:"chat"`
 
 	// For forwarded messages, sender of the original message (Optional)
 	ForwardFrom User `json:"forward_from"`
@@ -93,11 +98,11 @@ type Message struct {
 
 	// A new member was added to the group, information about them
 	// (this member may be bot itself) (Optional)
-	NewChatParticipant User `json:"new_chat_participant"`
+	JoinedUser User `json:"new_chat_participant"`
 
 	// A member was removed from the group, information about them
 	// (this member may be bot itself) (Optional)
-	LeftChatParticipant User `json:"left_chat_participant"`
+	LeftUser User `json:"left_chat_participant"`
 
 	// A group title was changed to this value (Optional)
 	NewChatTitle string `json:"new_chat_title"`
@@ -106,7 +111,7 @@ type Message struct {
 	NewChatPhoto []Photo `json:"new_chat_photo"`
 
 	// Informs that the group photo was deleted (Optional)
-	DeleteChatPhoto bool `json:"delete_chat_photo"`
+	ChatPhotoDeleted bool `json:"delete_chat_photo"`
 
 	// Informs that the group has been created (Optional)
 	GroupChatCreated bool `json:"group_chat_created"`
@@ -151,6 +156,36 @@ func (m Message) Args() []string {
 		return nil
 	}
 	return strings.Fields(args[i+1:])
+}
+
+// IsService reports whether the message is a Telegram service message, not a
+// user sent message.
+func (m Message) IsService() bool {
+	switch {
+	case m.NewChatTitle != "":
+		return true
+	case len(m.NewChatPhoto) > 0:
+		return true
+	case m.JoinedUser != User{}:
+		return true
+	case m.LeftUser != User{}:
+		return true
+	case m.GroupChatCreated:
+		return true
+	case m.ChatPhotoDeleted:
+		return true
+	}
+	return false
+}
+
+// IsReply reports whether the message is a reply to another message.
+func (m Message) IsReply() bool {
+	return m.ReplyTo != nil
+}
+
+// Time returns the moment of message in UTC time.
+func (m Message) Time() time.Time {
+	return time.Unix(int64(m.Unixtime), 0).UTC()
 }
 
 type File struct {
