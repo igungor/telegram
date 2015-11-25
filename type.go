@@ -38,7 +38,7 @@ type Chat struct {
 }
 
 // IsGroupChat reports whether the message is originally sent from a chat group.
-func (c Chat) IsGroupChat() bool { return c.Title == "group" }
+func (c Chat) IsGroupChat() bool { return c.Type == "group" }
 
 type Update struct {
 	ID      int     `json:"update_id"`
