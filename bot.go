@@ -189,7 +189,7 @@ func (b Bot) SendPhoto(recipient int, photo Photo, caption string, opts *SendOpt
 
 	var r struct {
 		OK      bool   `json:"ok"`
-		ErrCode int    `json:"errorcode"`
+		ErrCode int    `json:"error_code"`
 		Desc    string `json:"description"`
 	}
 
@@ -198,7 +198,7 @@ func (b Bot) SendPhoto(recipient int, photo Photo, caption string, opts *SendOpt
 	}
 
 	if !r.OK {
-		return fmt.Errorf("%v (%v)", r.Desc, r.ErrCode)
+		return fmt.Errorf("%v (ErrorCode: %v)", r.Desc, r.ErrCode)
 	}
 
 	return nil
