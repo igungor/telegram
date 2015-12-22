@@ -68,7 +68,6 @@ func (b Bot) Listen(addr string) <-chan Message {
 // SetWebhook assigns bot's webhook url with the given url.
 func (b Bot) SetWebhook(webhook string) error {
 	urlvalues := url.Values{"url": {webhook}}
-
 	resp, err := http.PostForm(baseURL+b.token+"/setWebhook", urlvalues)
 	if err != nil {
 		return err
@@ -80,15 +79,12 @@ func (b Bot) SetWebhook(webhook string) error {
 		ErrCode int    `json:"errorcode"`
 		Desc    string `json:"description"`
 	}
-
 	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
 		return err
 	}
-
 	if !r.OK {
 		return fmt.Errorf("%v (%v)", r.Desc, r.ErrCode)
 	}
-
 	return nil
 }
 
@@ -101,7 +97,6 @@ func (b Bot) SendMessage(recipient int, message string, mode ParseMode, preview 
 		"parse_mode":               {string(mode)},
 		"disable_web_page_preview": {strconv.FormatBool(!preview)},
 	}
-
 	if opts != nil && (opts.ReplyMarkup.Keyboard != nil || opts.ReplyMarkup.ForceReply || opts.ReplyMarkup.Hide) {
 		replymarkup, _ := json.Marshal(opts.ReplyMarkup)
 		urlvalues.Set("reply_markup", string(replymarkup))
@@ -118,15 +113,12 @@ func (b Bot) SendMessage(recipient int, message string, mode ParseMode, preview 
 		Desc    string `json:"description"`
 		ErrCode int    `json:"errorcode"`
 	}
-
 	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
 		return err
 	}
-
 	if !r.OK {
 		return fmt.Errorf("%v (%v)", r.Desc, r.ErrCode)
 	}
-
 	return nil
 }
 
@@ -165,25 +157,22 @@ func (b Bot) SendPhoto(recipient int, photo Photo, caption string, opts *SendOpt
 
 	var buf bytes.Buffer
 	w := multipart.NewWriter(&buf)
-
 	part, err := w.CreateFormFile("photo", "image.jpg")
 	if err != nil {
 		return err
 	}
-
 	if _, err := io.Copy(part, resp.Body); err != nil {
 		return err
 	}
 
 	w.WriteField("chat_id", strconv.Itoa(recipient))
-
 	if err := w.Close(); err != nil {
 		return err
 	}
 
 	resp, err = http.Post(baseURL+b.token+"/sendPhoto", w.FormDataContentType(), &buf)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error while sending image to Telegram servers: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -192,15 +181,12 @@ func (b Bot) SendPhoto(recipient int, photo Photo, caption string, opts *SendOpt
 		ErrCode int    `json:"error_code"`
 		Desc    string `json:"description"`
 	}
-
 	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
-		return err
+		return fmt.Errorf("Error while decoding response: %v", err)
 	}
-
 	if !r.OK {
-		return fmt.Errorf("%v (ErrorCode: %v)", r.Desc, r.ErrCode)
+		return fmt.Errorf("Error returned from Telegram servers after sending photo: %v (ErrorCode: %v)", r.Desc, r.ErrCode)
 	}
-
 	return nil
 }
 
@@ -248,8 +234,30 @@ func (b Bot) sendVoice(recipient User, audio Audio, opts *SendOptions) error {
 // TODO(ig): implement
 //
 // SendLocation sends location point on the map.
-func (b Bot) sendLocation(recipient User, location Location, opts *SendOptions) error {
-	panic("not implemented yet")
+func (b Bot) SendLocation(recipient int, location Location, opts *SendOptions) error {
+	urlvalues := url.Values{
+		"chat_id":   {strconv.Itoa(recipient)},
+		"latitude":  {strconv.FormatFloat(location.Lat, 'f', -1, 64)},
+		"longitude": {strconv.FormatFloat(location.Long, 'f', -1, 64)},
+	}
+	resp, err := http.PostForm(baseURL+b.token+"/sendLocation", urlvalues)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	var r struct {
+		OK      bool   `json:"ok"`
+		Desc    string `json:"description"`
+		ErrCode int    `json:"errorcode"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
+		return err
+	}
+	if !r.OK {
+		return fmt.Errorf("%v (%v)", r.Desc, r.ErrCode)
+	}
+	return nil
 }
 
 // SendChatAction broadcasts type of action to recipient, such as `typing`,
@@ -259,7 +267,6 @@ func (b Bot) SendChatAction(recipient int, action Action) error {
 		"chat_id": {strconv.Itoa(recipient)},
 		"action":  {string(action)},
 	}
-
 	resp, err := http.PostForm(baseURL+b.token+"/sendChatAction", urlvalues)
 	if err != nil {
 		return err
@@ -271,15 +278,12 @@ func (b Bot) SendChatAction(recipient int, action Action) error {
 		ErrCode int    `json:"error_code"`
 		Desc    string `json:"description"`
 	}
-
 	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
 		return nil
 	}
-
 	if !r.OK {
 		return fmt.Errorf("%v (%v)", r.Desc, r.ErrCode)
 	}
-
 	return nil
 }
 
@@ -296,21 +300,17 @@ func getMe(token string) (User, error) {
 		return User{}, err
 	}
 	defer resp.Body.Close()
-
 	var r struct {
 		OK      bool   `json:"ok"`
 		User    User   `json:"result"`
 		Desc    string `json:"description"`
 		ErrCode int    `json:"error_code"`
 	}
-
 	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
 		return User{}, err
 	}
-
 	if !r.OK {
 		return User{}, fmt.Errorf("%v (%v)", r.Desc, r.ErrCode)
 	}
-
 	return r.User, nil
 }
