@@ -134,26 +134,8 @@ func (b Bot) forwardMessage(recipient User, message Message) error {
 //  photo := bot.Photo{FileURL: "http://i.imgur.com/6S9naG6.png"}
 //  err := b.SendPhoto(recipient, photo, "sample image", nil)
 //
-func (b Bot) SendPhoto(recipient int, photo Photo, caption string, opts *SendOptions) error {
-	// TODO(ig): implement sending already sent photos
-	if photo.Exists() {
-		panic("files reside in telegram servers can not be sent for now.")
-	}
-
-	// TODO(ig): implement local file upload
-	if photo.IsLocal() {
-		panic("local files can not be sent for now.")
-	}
-
-	resp, err := http.Get(photo.FileURL)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Fetch failed (errcode: %v). Remote URL: '%v'", resp.StatusCode, photo.FileURL)
-	}
+func (b Bot) SendPhoto(photo Photo, recipient int, caption string, opts *SendOptions) error {
+	defer photo.Body.Close()
 
 	var buf bytes.Buffer
 	w := multipart.NewWriter(&buf)
@@ -161,7 +143,7 @@ func (b Bot) SendPhoto(recipient int, photo Photo, caption string, opts *SendOpt
 	if err != nil {
 		return err
 	}
-	if _, err := io.Copy(part, resp.Body); err != nil {
+	if _, err := io.Copy(part, photo.Body); err != nil {
 		return err
 	}
 
@@ -170,7 +152,7 @@ func (b Bot) SendPhoto(recipient int, photo Photo, caption string, opts *SendOpt
 		return err
 	}
 
-	resp, err = http.Post(baseURL+b.token+"/sendPhoto", w.FormDataContentType(), &buf)
+	resp, err := http.Post(baseURL+b.token+"/sendPhoto", w.FormDataContentType(), &buf)
 	if err != nil {
 		return fmt.Errorf("Error while sending image to Telegram servers: %v", err)
 	}
