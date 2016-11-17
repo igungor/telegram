@@ -3,7 +3,6 @@ package tlbot
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 )
@@ -191,11 +190,24 @@ func (m Message) Time() time.Time {
 
 type File struct {
 	// File is embedded in most of the types. So a `File` prefix is used
-	ID   string `json:"file_id"`
-	Size int    `json:"file_size"`
+	FileID   string `json:"file_id"`
+	FileSize int    `json:"file_size"`
 
-	Body io.ReadCloser `json:"-"`
+	// URL to the file (custom field)
+	FileURL string `json:"-"`
+
+	// Path to the file on local filesystem (custom field)
+	FilePath string `json:"-"`
 }
+
+// Exists reports whether the file is already at Telegram servers.
+func (f File) Exists() bool { return f.FileID != "" }
+
+// IsLocal reports whether the file is the local filesystem.
+func (f File) IsLocal() bool { return f.FilePath != "" }
+
+// IsRemote reports whether the file is on a remote server.
+func (f File) IsRemote() bool { return f.FileURL != "" }
 
 // Photo represents one size of a photo or a file/sticker thumbnail.
 type Photo struct {
