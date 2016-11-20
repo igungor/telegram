@@ -260,6 +260,35 @@ func (b Bot) SendLocation(recipient int, location Location, opts *SendOptions) e
 	return nil
 }
 
+// SendVenue Use this method to send information about a venue
+func (b Bot) SendVenue(recipient int, venue Venue, opts *SendOptions) error {
+	urlvalues := url.Values{
+		"chat_id":   {strconv.Itoa(recipient)},
+		"latitude":  {strconv.FormatFloat(venue.Location.Lat, 'f', -1, 64)},
+		"longitude": {strconv.FormatFloat(venue.Location.Long, 'f', -1, 64)},
+		"title":     {venue.Title},
+		"address":   {venue.Address},
+	}
+	resp, err := http.PostForm(baseURL+b.token+"/sendVenue", urlvalues)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	var r struct {
+		OK      bool   `json:"ok"`
+		Desc    string `json:"description"`
+		ErrCode int    `json:"errorcode"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
+		return err
+	}
+	if !r.OK {
+		return fmt.Errorf("%v (%v)", r.Desc, r.ErrCode)
+	}
+	return nil
+}
+
 // SendChatAction broadcasts type of action to recipient, such as `typing`,
 // `uploading a photo` etc.
 func (b Bot) SendChatAction(recipient int, action Action) error {
