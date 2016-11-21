@@ -260,7 +260,7 @@ func (b Bot) SendLocation(recipient int, location Location, opts *SendOptions) e
 	return nil
 }
 
-// SendVenue Use this method to send information about a venue
+// SendVenue sends information about a venue.
 func (b Bot) SendVenue(recipient int, venue Venue, opts *SendOptions) error {
 	urlvalues := url.Values{
 		"chat_id":   {strconv.Itoa(recipient)},
