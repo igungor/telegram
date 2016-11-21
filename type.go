@@ -265,6 +265,14 @@ type Location struct {
 	Long float64 `json:"longitude"`
 }
 
+// Venue represents a venue
+type Venue struct {
+	Location     Location `json:"location"`
+	Title        string   `json:"title"`
+	Address      string   `json:"address"`
+	FoursquareID string   `json:"foursquare_id"`
+}
+
 // Contact represents a phone contact.
 type Contact struct {
 	PhoneNumber string `json:"phone_number"`
