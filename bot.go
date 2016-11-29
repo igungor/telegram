@@ -90,19 +90,15 @@ func (b Bot) SetWebhook(webhook string) error {
 
 // SendMessage sends text message to the recipient. Callers can send plain
 // text or markdown messages by setting mode parameter.
-func (b Bot) SendMessage(recipient int, message string, mode ParseMode, preview bool, opts *SendOptions) error {
-	urlvalues := url.Values{
-		"chat_id":                  {strconv.Itoa(recipient)},
-		"text":                     {message},
-		"parse_mode":               {string(mode)},
-		"disable_web_page_preview": {strconv.FormatBool(!preview)},
-	}
-	if opts != nil && (opts.ReplyMarkup.Keyboard != nil || opts.ReplyMarkup.ForceReply || opts.ReplyMarkup.Hide) {
-		replymarkup, _ := json.Marshal(opts.ReplyMarkup)
-		urlvalues.Set("reply_markup", string(replymarkup))
+func (b Bot) SendMessage(recipient int, message string, opts *SendOptions) error {
+	params := url.Values{
+		"chat_id": {strconv.Itoa(recipient)},
+		"text":    {message},
 	}
 
-	resp, err := http.PostForm(baseURL+b.token+"/sendMessage", urlvalues)
+	mapSendOptions(&params, opts)
+
+	resp, err := http.PostForm(baseURL+b.token+"/sendMessage", params)
 	if err != nil {
 		return err
 	}
@@ -131,28 +127,24 @@ func (b Bot) forwardMessage(recipient User, message Message) error {
 // A trivial example is:
 //
 //  b := bot.New("your-token-here")
-//  photo := bot.Photo{FileURL: "http://i.imgur.com/6S9naG6.png"}
+//  photo := bot.Photo{URL: "http://i.imgur.com/6S9naG6.png"}
 //  err := b.SendPhoto(recipient, photo, "sample image", nil)
 //
-func (b Bot) SendPhoto(recipient int, photo Photo, caption string, opts *SendOptions) error {
-	// TODO(ig): implement sending already sent photos
-	if photo.Exists() {
-		panic("files reside in telegram servers can not be sent for now.")
-	}
+func (b Bot) SendPhoto(recipient int, photo Photo, opts *SendOptions) error {
+	params := url.Values{}
+	params.Set("chat_id", strconv.Itoa(recipient))
+	params.Set("caption", photo.Caption)
 
-	// TODO(ig): implement local file upload
-	if photo.IsLocal() {
-		panic("local files can not be sent for now.")
-	}
+	mapSendOptions(&params, opts)
 
-	resp, err := http.Get(photo.FileURL)
+	resp, err := http.Get(photo.URL)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Fetch failed (errcode: %v). Remote URL: '%v'", resp.StatusCode, photo.FileURL)
+		return fmt.Errorf("Fetch failed (errcode: %v). Remote URL: '%v'", resp.StatusCode, photo.URL)
 	}
 
 	var buf bytes.Buffer
@@ -165,7 +157,10 @@ func (b Bot) SendPhoto(recipient int, photo Photo, caption string, opts *SendOpt
 		return err
 	}
 
-	w.WriteField("chat_id", strconv.Itoa(recipient))
+	for k, v := range params {
+		w.WriteField(k, v[0])
+	}
+
 	if err := w.Close(); err != nil {
 		return err
 	}
@@ -317,10 +312,55 @@ func (b Bot) SendChatAction(recipient int, action Action) error {
 }
 
 type SendOptions struct {
-	// If the message is a reply, ID of the original message
-	ReplyToMessageID int
+	ReplyTo int
+
+	ParseMode ParseMode
+
+	DisableWebPagePreview bool
+
+	DisableNotification bool
 
 	ReplyMarkup ReplyMarkup
+}
+
+func (b Bot) GetFile(fileID string) (File, error) {
+	urlvalues := url.Values{
+		"file_id": {fileID},
+	}
+
+	resp, err := http.PostForm(baseURL+b.token+"/getFile", urlvalues)
+	if err != nil {
+		return File{}, err
+	}
+	defer resp.Body.Close()
+
+	var r struct {
+		OK      bool   `json:"ok"`
+		Desc    string `json:"description"`
+		ErrCode int    `json:"errorcode"`
+		File    File   `json:"result"`
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&r)
+	if err != nil {
+		return File{}, err
+	}
+
+	if !r.OK {
+		return File{}, fmt.Errorf("%v (%v)", r.Desc, r.ErrCode)
+	}
+
+	return r.File, nil
+}
+
+func (b Bot) GetFileDownloadURL(fileID string) (string, error) {
+	f, err := b.GetFile(fileID)
+	if err != nil {
+		return "", err
+	}
+
+	u := "https://api.telegram.org/file/bot" + b.token + "/" + f.FilePath
+	return u, nil
 }
 
 func getMe(token string) (User, error) {
@@ -342,4 +382,28 @@ func getMe(token string) (User, error) {
 		return User{}, fmt.Errorf("%v (%v)", r.Desc, r.ErrCode)
 	}
 	return r.User, nil
+}
+
+func mapSendOptions(m *url.Values, opts *SendOptions) {
+	if opts == nil {
+		return
+	}
+
+	if opts.ReplyTo != 0 {
+		m.Set("reply_to_message_id", strconv.Itoa(opts.ReplyTo))
+	}
+
+	if opts.DisableWebPagePreview {
+		m.Set("disable_web_page_preview", "true")
+	}
+
+	if opts.DisableNotification {
+		m.Set("disable_notification", "true")
+	}
+
+	if opts.ParseMode != ModeNone {
+		m.Set("parse_mode", string(opts.ParseMode))
+	}
+
+	// TODO: map ReplyMarkup options as well
 }
