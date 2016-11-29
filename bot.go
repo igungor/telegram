@@ -139,10 +139,10 @@ func (b Bot) SendPhoto(recipient int, photo Photo, opts *SendOptions) (Message, 
 
 	var err error
 	if photo.Exists() {
-		params.Set("file_id", photo.FileID)
+		params.Set("photo", photo.FileID)
 		err = b.sendCommand("sendPhoto", params, &r)
 	} else if photo.URL != "" {
-		params.Set("file_id", photo.URL)
+		params.Set("photo", photo.URL)
 		err = b.sendCommand("sendPhoto", params, &r)
 	} else {
 		err = b.sendFile("sendPhoto", photo.File, "photo", params, &r)
