@@ -195,6 +195,7 @@ type File struct {
 	FileSize int    `json:"file_size"`
 	FilePath string `json:"file_path"`
 
+	Name string    `json:"-"`
 	Body io.Reader `json:"-"`
 	URL  string    `json:"-"`
 }

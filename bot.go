@@ -11,9 +11,8 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"time"
 )
-
-const baseURL = "https://api.telegram.org/bot"
 
 type ParseMode string
 
@@ -25,16 +24,19 @@ const (
 
 // Bot represent a Telegram bot.
 type Bot struct {
-	token string
-	Info  User
+	token   string
+	baseURL string
+	client  *http.Client
 }
 
 // New creates a new Telegram bot with the given token, which is given by
 // Botfather. See https://core.telegram.org/bots#botfather
 func New(token string) Bot {
-	u, _ := getMe(token)
-
-	return Bot{token: token, Info: u}
+	return Bot{
+		token:   token,
+		baseURL: fmt.Sprintf("https://api.telegram.org/bot%v/", token),
+		client:  &http.Client{Timeout: 30 * time.Second},
+	}
 }
 
 // Listen listens on the given address addr and returns a read-only Message
@@ -47,7 +49,8 @@ func (b Bot) Listen(addr string) <-chan Message {
 		defer w.WriteHeader(http.StatusOK)
 
 		var u Update
-		if err := json.NewDecoder(req.Body).Decode(&u); err != nil {
+		err := json.NewDecoder(req.Body).Decode(&u)
+		if err != nil {
 			log.Printf("error decoding request body: %v\n", err)
 			return
 
@@ -67,30 +70,29 @@ func (b Bot) Listen(addr string) <-chan Message {
 
 // SetWebhook assigns bot's webhook url with the given url.
 func (b Bot) SetWebhook(webhook string) error {
-	urlvalues := url.Values{"url": {webhook}}
-	resp, err := http.PostForm(baseURL+b.token+"/setWebhook", urlvalues)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+	params := url.Values{}
+	params.Set("url", webhook)
 
 	var r struct {
 		OK      bool   `json:"ok"`
-		ErrCode int    `json:"errorcode"`
 		Desc    string `json:"description"`
+		ErrCode int    `json:"errorcode"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
+	err := b.sendCommand("setWebhook", params, &r)
+	if err != nil {
 		return err
 	}
+
 	if !r.OK {
 		return fmt.Errorf("%v (%v)", r.Desc, r.ErrCode)
 	}
+
 	return nil
 }
 
 // SendMessage sends text message to the recipient. Callers can send plain
 // text or markdown messages by setting mode parameter.
-func (b Bot) SendMessage(recipient int, message string, opts *SendOptions) error {
+func (b Bot) SendMessage(recipient int, message string, opts *SendOptions) (Message, error) {
 	params := url.Values{
 		"chat_id": {strconv.Itoa(recipient)},
 		"text":    {message},
@@ -98,28 +100,21 @@ func (b Bot) SendMessage(recipient int, message string, opts *SendOptions) error
 
 	mapSendOptions(&params, opts)
 
-	resp, err := http.PostForm(baseURL+b.token+"/sendMessage", params)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
 	var r struct {
 		OK      bool   `json:"ok"`
 		Desc    string `json:"description"`
 		ErrCode int    `json:"errorcode"`
+		Message Message
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
-		return err
-	}
+	b.sendCommand("sendMessage", params, &r)
+
 	if !r.OK {
-		return fmt.Errorf("%v (%v)", r.Desc, r.ErrCode)
+		return Message{}, fmt.Errorf("%v (%v)", r.Desc, r.ErrCode)
 	}
-	return nil
+	return r.Message, nil
 }
 
-// TODO(ig): implement
-func (b Bot) forwardMessage(recipient User, message Message) error {
+func (b Bot) forwardMessage(recipient User, message Message) (Message, error) {
 	panic("not implemented yet")
 }
 
@@ -129,31 +124,53 @@ func (b Bot) forwardMessage(recipient User, message Message) error {
 //  b := bot.New("your-token-here")
 //  photo := bot.Photo{URL: "http://i.imgur.com/6S9naG6.png"}
 //  err := b.SendPhoto(recipient, photo, "sample image", nil)
-//
-func (b Bot) SendPhoto(recipient int, photo Photo, opts *SendOptions) error {
+func (b Bot) SendPhoto(recipient int, photo Photo, opts *SendOptions) (Message, error) {
 	params := url.Values{}
 	params.Set("chat_id", strconv.Itoa(recipient))
 	params.Set("caption", photo.Caption)
 
 	mapSendOptions(&params, opts)
+	var r struct {
+		OK      bool    `json:"ok"`
+		Desc    string  `json:"description"`
+		ErrCode int     `json:"error_code"`
+		Message Message `json:"message"`
+	}
 
-	resp, err := http.Get(photo.URL)
+	var err error
+	if photo.Exists() {
+		params.Set("file_id", photo.FileID)
+		err = b.sendCommand("sendPhoto", params, &r)
+	} else if photo.URL != "" {
+		params.Set("file_id", photo.URL)
+		err = b.sendCommand("sendPhoto", params, &r)
+	} else {
+		err = b.sendFile("sendPhoto", photo.File, "photo", params, &r)
+	}
+
 	if err != nil {
-		return err
+		return Message{}, err
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Fetch failed (errcode: %v). Remote URL: '%v'", resp.StatusCode, photo.URL)
+	if !r.OK {
+		return Message{}, fmt.Errorf("%v (%v)", r.Desc, r.ErrCode)
 	}
+
+	return r.Message, nil
+}
+
+func (b Bot) sendFile(method string, f File, form string, params url.Values, v interface{}) error {
+	u := fmt.Sprintf("%v/%v/%v", b.baseURL, b.token, method)
 
 	var buf bytes.Buffer
 	w := multipart.NewWriter(&buf)
-	part, err := w.CreateFormFile("photo", "image.jpg")
+	part, err := w.CreateFormFile(form, f.Name)
 	if err != nil {
 		return err
 	}
-	if _, err := io.Copy(part, resp.Body); err != nil {
+
+	_, err = io.Copy(part, f.Body)
+	if err != nil {
 		return err
 	}
 
@@ -161,153 +178,128 @@ func (b Bot) SendPhoto(recipient int, photo Photo, opts *SendOptions) error {
 		w.WriteField(k, v[0])
 	}
 
-	if err := w.Close(); err != nil {
+	err = w.Close()
+	if err != nil {
 		return err
 	}
 
-	resp, err = http.Post(baseURL+b.token+"/sendPhoto", w.FormDataContentType(), &buf)
+	resp, err := b.client.Post(u, w.FormDataContentType(), &buf)
 	if err != nil {
-		return fmt.Errorf("Error while sending image to Telegram servers: %v", err)
+		return err
 	}
 	defer resp.Body.Close()
 
-	var r struct {
-		OK      bool   `json:"ok"`
-		ErrCode int    `json:"error_code"`
-		Desc    string `json:"description"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
-		return fmt.Errorf("Error while decoding response: %v", err)
-	}
-	if !r.OK {
-		return fmt.Errorf("Error returned from Telegram servers after sending photo: %v (ErrorCode: %v)", r.Desc, r.ErrCode)
-	}
-	return nil
+	return json.NewDecoder(resp.Body).Decode(&v)
 }
 
-// TODO(ig): implement
-//
 // SendAudio sends audio files, if you want Telegram clients to display
 // them in the music player. audio must be in the .mp3 format and must not
 // exceed 50 MB in size.
-func (b Bot) sendAudio(recipient User, audio Audio, opts *SendOptions) error {
+func (b Bot) sendAudio(recipient User, audio Audio, opts *SendOptions) (Message, error) {
 	panic("not implemented yet")
 }
 
-// TODO(ig): implement
-//
 // SendDocument sends general files. Documents must not exceed 50 MB in size.
-func (b Bot) sendDocument(recipient User, document Document, opts *SendOptions) error {
+func (b Bot) sendDocument(recipient User, document Document, opts *SendOptions) (Message, error) {
 	panic("not implemented yet")
 }
 
-// TODO(ig): implement
-//
 //SendSticker sends stickers with .webp extensions.
-func (b Bot) sendSticker(recipient User, sticker Sticker, opts *SendOptions) error {
+func (b Bot) sendSticker(recipient User, sticker Sticker, opts *SendOptions) (Message, error) {
 	panic("not implemented yet")
 }
 
-// TODO(ig): implement
-//
 // SendVideo sends video files. Telegram clients support mp4 videos (other
 // formats may be sent as Document). Video files must not exceed 50 MB in size.
-func (b Bot) sendVideo(recipient User, video Video, opts *SendOptions) error {
+func (b Bot) sendVideo(recipient User, video Video, opts *SendOptions) (Message, error) {
 	panic("not implemented yet")
 }
 
-// TODO(ig): implement
-//
 // SendVoice sends audio files, if you want Telegram clients to display
 // the file as a playable voice message. For this to work, your audio must be
 // in an .ogg file encoded with OPUS (other formats may be sent as Audio or
 // Document). audio must not exceed 50 MB in size.
-func (b Bot) sendVoice(recipient User, audio Audio, opts *SendOptions) error {
+func (b Bot) sendVoice(recipient User, audio Audio, opts *SendOptions) (Message, error) {
 	panic("not implemented yet")
 }
 
-// TODO(ig): implement
-//
 // SendLocation sends location point on the map.
-func (b Bot) SendLocation(recipient int, location Location, opts *SendOptions) error {
-	urlvalues := url.Values{
-		"chat_id":   {strconv.Itoa(recipient)},
-		"latitude":  {strconv.FormatFloat(location.Lat, 'f', -1, 64)},
-		"longitude": {strconv.FormatFloat(location.Long, 'f', -1, 64)},
-	}
-	resp, err := http.PostForm(baseURL+b.token+"/sendLocation", urlvalues)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+func (b Bot) SendLocation(recipient int, location Location, opts *SendOptions) (Message, error) {
+	params := url.Values{}
+	params.Set("chat_id", strconv.Itoa(recipient))
+	params.Set("latitude", strconv.FormatFloat(location.Lat, 'f', -1, 64))
+	params.Set("longitude", strconv.FormatFloat(location.Long, 'f', -1, 64))
+
+	mapSendOptions(&params, opts)
 
 	var r struct {
-		OK      bool   `json:"ok"`
-		Desc    string `json:"description"`
-		ErrCode int    `json:"errorcode"`
+		OK      bool    `json:"ok"`
+		Desc    string  `json:"description"`
+		ErrCode int     `json:"errorcode"`
+		Message Message `json:"message"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
-		return err
+	err := b.sendCommand("sendLocation", params, &r)
+	if err != nil {
+		return Message{}, err
 	}
+
 	if !r.OK {
-		return fmt.Errorf("%v (%v)", r.Desc, r.ErrCode)
+		return Message{}, fmt.Errorf("%v (%v)", r.Desc, r.ErrCode)
 	}
-	return nil
+
+	return r.Message, nil
 }
 
 // SendVenue sends information about a venue.
-func (b Bot) SendVenue(recipient int, venue Venue, opts *SendOptions) error {
-	urlvalues := url.Values{
-		"chat_id":   {strconv.Itoa(recipient)},
-		"latitude":  {strconv.FormatFloat(venue.Location.Lat, 'f', -1, 64)},
-		"longitude": {strconv.FormatFloat(venue.Location.Long, 'f', -1, 64)},
-		"title":     {venue.Title},
-		"address":   {venue.Address},
-	}
-	resp, err := http.PostForm(baseURL+b.token+"/sendVenue", urlvalues)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+func (b Bot) SendVenue(recipient int, venue Venue, opts *SendOptions) (Message, error) {
+	params := url.Values{}
+	params.Set("chat_id", strconv.Itoa(recipient))
+	params.Set("latitude", strconv.FormatFloat(venue.Location.Lat, 'f', -1, 64))
+	params.Set("longitude", strconv.FormatFloat(venue.Location.Long, 'f', -1, 64))
+	params.Set("title", venue.Title)
+	params.Set("address", venue.Address)
+
+	mapSendOptions(&params, opts)
 
 	var r struct {
-		OK      bool   `json:"ok"`
-		Desc    string `json:"description"`
-		ErrCode int    `json:"errorcode"`
+		OK      bool    `json:"ok"`
+		Desc    string  `json:"description"`
+		ErrCode int     `json:"errorcode"`
+		Message Message `json:"message"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
-		return err
+	err := b.sendCommand("sendVenue", params, &r)
+	if err != nil {
+		return Message{}, err
 	}
+
 	if !r.OK {
-		return fmt.Errorf("%v (%v)", r.Desc, r.ErrCode)
+		return Message{}, fmt.Errorf("%v (%v)", r.Desc, r.ErrCode)
 	}
-	return nil
+	return r.Message, nil
 }
 
 // SendChatAction broadcasts type of action to recipient, such as `typing`,
 // `uploading a photo` etc.
 func (b Bot) SendChatAction(recipient int, action Action) error {
-	urlvalues := url.Values{
-		"chat_id": {strconv.Itoa(recipient)},
-		"action":  {string(action)},
-	}
-	resp, err := http.PostForm(baseURL+b.token+"/sendChatAction", urlvalues)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+	params := url.Values{}
+	params.Set("chat_id", strconv.Itoa(recipient))
+	params.Set("action", string(action))
 
 	var r struct {
 		OK      bool   `json:"ok"`
-		ErrCode int    `json:"error_code"`
 		Desc    string `json:"description"`
+		ErrCode int    `json:"error_code"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
-		return nil
+
+	err := b.sendCommand("sendChatAction", params, &r)
+	if err != nil {
+		return err
+
 	}
 	if !r.OK {
 		return fmt.Errorf("%v (%v)", r.Desc, r.ErrCode)
 	}
+
 	return nil
 }
 
@@ -324,15 +316,8 @@ type SendOptions struct {
 }
 
 func (b Bot) GetFile(fileID string) (File, error) {
-	urlvalues := url.Values{
-		"file_id": {fileID},
-	}
-
-	resp, err := http.PostForm(baseURL+b.token+"/getFile", urlvalues)
-	if err != nil {
-		return File{}, err
-	}
-	defer resp.Body.Close()
+	params := url.Values{}
+	params.Set("file_id", fileID)
 
 	var r struct {
 		OK      bool   `json:"ok"`
@@ -340,8 +325,7 @@ func (b Bot) GetFile(fileID string) (File, error) {
 		ErrCode int    `json:"errorcode"`
 		File    File   `json:"result"`
 	}
-
-	err = json.NewDecoder(resp.Body).Decode(&r)
+	err := b.sendCommand("getFile", params, &r)
 	if err != nil {
 		return File{}, err
 	}
@@ -363,24 +347,33 @@ func (b Bot) GetFileDownloadURL(fileID string) (string, error) {
 	return u, nil
 }
 
-func getMe(token string) (User, error) {
-	resp, err := http.PostForm(baseURL+token+"/getMe", url.Values{})
+func (b Bot) sendCommand(method string, params url.Values, v interface{}) error {
+	resp, err := b.client.PostForm(b.baseURL+method, params)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	return json.NewDecoder(resp.Body).Decode(&v)
+}
+
+func (b Bot) getMe() (User, error) {
+	var r struct {
+		OK      bool   `json:"ok"`
+		Desc    string `json:"description"`
+		ErrCode int    `json:"error_code"`
+
+		User User `json:"result"`
+	}
+	err := b.sendCommand("getMe", url.Values{}, &r)
 	if err != nil {
 		return User{}, err
 	}
-	defer resp.Body.Close()
-	var r struct {
-		OK      bool   `json:"ok"`
-		User    User   `json:"result"`
-		Desc    string `json:"description"`
-		ErrCode int    `json:"error_code"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
-		return User{}, err
-	}
+
 	if !r.OK {
 		return User{}, fmt.Errorf("%v (%v)", r.Desc, r.ErrCode)
 	}
+
 	return r.User, nil
 }
 
