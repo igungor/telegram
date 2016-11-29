@@ -160,8 +160,6 @@ func (b Bot) SendPhoto(recipient int, photo Photo, opts *SendOptions) (Message, 
 }
 
 func (b Bot) sendFile(method string, f File, form string, params url.Values, v interface{}) error {
-	u := fmt.Sprintf("%v/%v/%v", b.baseURL, b.token, method)
-
 	var buf bytes.Buffer
 	w := multipart.NewWriter(&buf)
 	part, err := w.CreateFormFile(form, f.Name)
@@ -183,7 +181,7 @@ func (b Bot) sendFile(method string, f File, form string, params url.Values, v i
 		return err
 	}
 
-	resp, err := b.client.Post(u, w.FormDataContentType(), &buf)
+	resp, err := b.client.Post(b.baseURL+method, w.FormDataContentType(), &buf)
 	if err != nil {
 		return err
 	}
