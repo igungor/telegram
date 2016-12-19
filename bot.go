@@ -2,6 +2,7 @@ package tlbot
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -78,7 +80,7 @@ func (b Bot) SetWebhook(webhook string) error {
 		Desc    string `json:"description"`
 		ErrCode int    `json:"errorcode"`
 	}
-	err := b.sendCommand("setWebhook", params, &r)
+	err := b.sendCommand(nil, "setWebhook", params, &r)
 	if err != nil {
 		return err
 	}
@@ -106,7 +108,7 @@ func (b Bot) SendMessage(recipient int, message string, opts *SendOptions) (Mess
 		ErrCode int    `json:"errorcode"`
 		Message Message
 	}
-	b.sendCommand("sendMessage", params, &r)
+	b.sendCommand(nil, "sendMessage", params, &r)
 
 	if !r.OK {
 		return Message{}, fmt.Errorf("%v (%v)", r.Desc, r.ErrCode)
@@ -140,10 +142,10 @@ func (b Bot) SendPhoto(recipient int, photo Photo, opts *SendOptions) (Message, 
 	var err error
 	if photo.Exists() {
 		params.Set("photo", photo.FileID)
-		err = b.sendCommand("sendPhoto", params, &r)
+		err = b.sendCommand(nil, "sendPhoto", params, &r)
 	} else if photo.URL != "" {
 		params.Set("photo", photo.URL)
-		err = b.sendCommand("sendPhoto", params, &r)
+		err = b.sendCommand(nil, "sendPhoto", params, &r)
 	} else {
 		err = b.sendFile("sendPhoto", photo.File, "photo", params, &r)
 	}
@@ -236,7 +238,7 @@ func (b Bot) SendLocation(recipient int, location Location, opts *SendOptions) (
 		ErrCode int     `json:"errorcode"`
 		Message Message `json:"message"`
 	}
-	err := b.sendCommand("sendLocation", params, &r)
+	err := b.sendCommand(nil, "sendLocation", params, &r)
 	if err != nil {
 		return Message{}, err
 	}
@@ -265,7 +267,7 @@ func (b Bot) SendVenue(recipient int, venue Venue, opts *SendOptions) (Message, 
 		ErrCode int     `json:"errorcode"`
 		Message Message `json:"message"`
 	}
-	err := b.sendCommand("sendVenue", params, &r)
+	err := b.sendCommand(nil, "sendVenue", params, &r)
 	if err != nil {
 		return Message{}, err
 	}
@@ -289,7 +291,7 @@ func (b Bot) SendChatAction(recipient int, action Action) error {
 		ErrCode int    `json:"error_code"`
 	}
 
-	err := b.sendCommand("sendChatAction", params, &r)
+	err := b.sendCommand(nil, "sendChatAction", params, &r)
 	if err != nil {
 		return err
 
@@ -323,7 +325,7 @@ func (b Bot) GetFile(fileID string) (File, error) {
 		ErrCode int    `json:"errorcode"`
 		File    File   `json:"result"`
 	}
-	err := b.sendCommand("getFile", params, &r)
+	err := b.sendCommand(nil, "getFile", params, &r)
 	if err != nil {
 		return File{}, err
 	}
@@ -345,12 +347,28 @@ func (b Bot) GetFileDownloadURL(fileID string) (string, error) {
 	return u, nil
 }
 
-func (b Bot) sendCommand(method string, params url.Values, v interface{}) error {
-	resp, err := b.client.PostForm(b.baseURL+method, params)
+func (b Bot) sendCommand(ctx context.Context, method string, params url.Values, v interface{}) error {
+	req, err := http.NewRequest("POST", b.baseURL+method, strings.NewReader(params.Encode()))
+	if err != nil {
+		return err
+	}
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	req = req.WithContext(ctx)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := b.client.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status: %v", resp.Status)
+	}
 
 	return json.NewDecoder(resp.Body).Decode(&v)
 }
@@ -363,7 +381,7 @@ func (b Bot) getMe() (User, error) {
 
 		User User `json:"result"`
 	}
-	err := b.sendCommand("getMe", url.Values{}, &r)
+	err := b.sendCommand(nil, "getMe", url.Values{}, &r)
 	if err != nil {
 		return User{}, err
 	}
