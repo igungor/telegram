@@ -5,7 +5,7 @@ tlbot is a Go package to help writing [Telegram bots](https://core.telegram.org/
 ## installation
 
 ```sh
-go get github.com/igungor/tlbot
+go get -u github.com/igungor/tlbot
 ```
 
 ## usage
