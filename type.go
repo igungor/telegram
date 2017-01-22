@@ -22,7 +22,7 @@ const (
 
 // User represents a Telegram user or bot.
 type User struct {
-	ID        int    `json:"id"`
+	ID        int64  `json:"id"`
 	Username  string `json:"username"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
@@ -30,7 +30,7 @@ type User struct {
 
 // Chat represents a Telegram chat.
 type Chat struct {
-	ID        int    `json:"id"`
+	ID        int64  `json:"id"`
 	Type      string `json:"type"`
 	Title     string `json:"title"`
 	Username  string `json:"username"`
@@ -42,20 +42,20 @@ type Chat struct {
 func (c Chat) IsGroupChat() bool { return c.Type == "group" }
 
 type Update struct {
-	ID      int     `json:"update_id"`
+	ID      int64   `json:"update_id"`
 	Payload Message `json:"message"`
 }
 
 // Message represents a message to be sent.
 type Message struct {
 	// Unique message identifier
-	ID int `json:"message_id"`
+	ID int64 `json:"message_id"`
 
 	// Sender (optional. can be empty for messages sent to channel)
 	From User `json:"from"`
 
 	// Date is when the message was sent in Unix time
-	Unixtime int `json:"date"`
+	Unixtime int64 `json:"date"`
 
 	// Conversation the message belongs to — user in case of a private chat,
 	// group in case of a group chat
@@ -66,7 +66,7 @@ type Message struct {
 
 	// For forwarded messages, date the original message was sent in
 	// Unix time (Optional)
-	ForwardDate int `json:"forward_date"`
+	ForwardDate int64 `json:"forward_date"`
 
 	// For replies, the original message. Note that the Message
 	// object in this field will not contain further reply_to_message fields
@@ -186,7 +186,7 @@ func (m Message) IsReply() bool {
 
 // Time returns the moment of message in UTC time.
 func (m Message) Time() time.Time {
-	return time.Unix(int64(m.Unixtime), 0).UTC()
+	return time.Unix(m.Unixtime, 0).UTC()
 }
 
 type File struct {
