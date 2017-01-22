@@ -7,7 +7,7 @@ import (
 	"net"
 	"os"
 
-	"github.com/igungor/tlbot"
+	"github.com/igungor/telegram"
 )
 
 // flags
@@ -42,7 +42,7 @@ func main() {
 		flag.Usage()
 	}
 
-	b := tlbot.New(*token)
+	b := telegram.New(*token)
 	err := b.SetWebhook(*webhook)
 	if err != nil {
 		log.Fatal(err)
@@ -53,7 +53,7 @@ func main() {
 		go func() {
 			// echo the message as *bold*
 			txt := "*" + msg.Text + "*"
-			err := b.SendMessage(msg.Chat.ID, txt, tlbot.ModeMarkdown, false, nil)
+			_, err := b.SendMessage(msg.Chat.ID, txt, nil)
 			if err != nil {
 				log.Printf("Error while sending message. Err: %v\n", err)
 			}

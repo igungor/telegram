@@ -1,18 +1,18 @@
-# tlbot
+# telegram
 
-tlbot is a Go package to help writing [Telegram bots](https://core.telegram.org/bots)
+`telegram` is a Go package to help writing [Telegram bots](https://core.telegram.org/bots)
 
 ## installation
 
 ```sh
-go get -u github.com/igungor/tlbot
+go get -u github.com/igungor/telegram
 ```
 
 ## usage
 
-[Documentation](http://godoc.org/github.com/igungor/tlbot)
+[Documentation](http://godoc.org/github.com/igungor/telegram)
 
-Also look at [echobot](https://github.com/igungor/tlbot/tree/master/cmd/echobot)
+Also look at [echobot](https://github.com/igungor/telegram/tree/master/cmd/echobot)
 
 ## license
 

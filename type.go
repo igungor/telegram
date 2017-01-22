@@ -1,4 +1,4 @@
-package tlbot
+package telegram
 
 import (
 	"bytes"
