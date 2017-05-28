@@ -34,8 +34,8 @@ type Bot struct {
 
 // New creates a new Telegram bot with the given token, which is given by
 // Botfather. See https://core.telegram.org/bots#botfather
-func New(token string) Bot {
-	return Bot{
+func New(token string) *Bot {
+	return &Bot{
 		token:   token,
 		baseURL: fmt.Sprintf("https://api.telegram.org/bot%v/", token),
 		client:  &http.Client{Timeout: 30 * time.Second},
@@ -44,7 +44,7 @@ func New(token string) Bot {
 
 // Listen listens on the given address addr and returns a read-only Message
 // channel.
-func (b Bot) Listen(addr string) <-chan Message {
+func (b *Bot) Listen(addr string) <-chan Message {
 	messageCh := make(chan Message)
 
 	mux := http.NewServeMux()
@@ -72,7 +72,7 @@ func (b Bot) Listen(addr string) <-chan Message {
 }
 
 // SetWebhook assigns bot's webhook url with the given url.
-func (b Bot) SetWebhook(webhook string) error {
+func (b *Bot) SetWebhook(webhook string) error {
 	params := url.Values{}
 	params.Set("url", webhook)
 
@@ -95,7 +95,7 @@ func (b Bot) SetWebhook(webhook string) error {
 
 // SendMessage sends text message to the recipient. Callers can send plain
 // text or markdown messages by setting mode parameter.
-func (b Bot) SendMessage(recipient int64, message string, opts *SendOptions) (Message, error) {
+func (b *Bot) SendMessage(recipient int64, message string, opts *SendOptions) (Message, error) {
 	params := url.Values{
 		"chat_id": {strconv.FormatInt(recipient, 10)},
 		"text":    {message},
@@ -117,7 +117,7 @@ func (b Bot) SendMessage(recipient int64, message string, opts *SendOptions) (Me
 	return r.Message, nil
 }
 
-func (b Bot) forwardMessage(recipient User, message Message) (Message, error) {
+func (b *Bot) forwardMessage(recipient User, message Message) (Message, error) {
 	panic("not implemented yet")
 }
 
@@ -127,7 +127,7 @@ func (b Bot) forwardMessage(recipient User, message Message) (Message, error) {
 //  b := bot.New("your-token-here")
 //  photo := bot.Photo{URL: "http://i.imgur.com/6S9naG6.png"}
 //  err := b.SendPhoto(recipient, photo, "sample image", nil)
-func (b Bot) SendPhoto(recipient int64, photo Photo, opts *SendOptions) (Message, error) {
+func (b *Bot) SendPhoto(recipient int64, photo Photo, opts *SendOptions) (Message, error) {
 	params := url.Values{}
 	params.Set("chat_id", strconv.FormatInt(recipient, 10))
 	params.Set("caption", photo.Caption)
@@ -162,7 +162,7 @@ func (b Bot) SendPhoto(recipient int64, photo Photo, opts *SendOptions) (Message
 	return r.Message, nil
 }
 
-func (b Bot) sendFile(method string, f File, form string, params url.Values, v interface{}) error {
+func (b *Bot) sendFile(method string, f File, form string, params url.Values, v interface{}) error {
 	var buf bytes.Buffer
 	w := multipart.NewWriter(&buf)
 	part, err := w.CreateFormFile(form, f.Name)
@@ -196,23 +196,23 @@ func (b Bot) sendFile(method string, f File, form string, params url.Values, v i
 // SendAudio sends audio files, if you want Telegram clients to display
 // them in the music player. audio must be in the .mp3 format and must not
 // exceed 50 MB in size.
-func (b Bot) sendAudio(recipient int64, audio Audio, opts *SendOptions) (Message, error) {
+func (b *Bot) sendAudio(recipient int64, audio Audio, opts *SendOptions) (Message, error) {
 	panic("not implemented yet")
 }
 
 // SendDocument sends general files. Documents must not exceed 50 MB in size.
-func (b Bot) sendDocument(recipient int64, document Document, opts *SendOptions) (Message, error) {
+func (b *Bot) sendDocument(recipient int64, document Document, opts *SendOptions) (Message, error) {
 	panic("not implemented yet")
 }
 
 //SendSticker sends stickers with .webp extensions.
-func (b Bot) sendSticker(recipient int64, sticker Sticker, opts *SendOptions) (Message, error) {
+func (b *Bot) sendSticker(recipient int64, sticker Sticker, opts *SendOptions) (Message, error) {
 	panic("not implemented yet")
 }
 
 // SendVideo sends video files. Telegram clients support mp4 videos (other
 // formats may be sent as Document). Video files must not exceed 50 MB in size.
-func (b Bot) sendVideo(recipient int64, video Video, opts *SendOptions) (Message, error) {
+func (b *Bot) sendVideo(recipient int64, video Video, opts *SendOptions) (Message, error) {
 	panic("not implemented yet")
 }
 
@@ -220,12 +220,12 @@ func (b Bot) sendVideo(recipient int64, video Video, opts *SendOptions) (Message
 // the file as a playable voice message. For this to work, your audio must be
 // in an .ogg file encoded with OPUS (other formats may be sent as Audio or
 // Document). audio must not exceed 50 MB in size.
-func (b Bot) sendVoice(recipient int64, audio Audio, opts *SendOptions) (Message, error) {
+func (b *Bot) sendVoice(recipient int64, audio Audio, opts *SendOptions) (Message, error) {
 	panic("not implemented yet")
 }
 
 // SendLocation sends location point on the map.
-func (b Bot) SendLocation(recipient int64, location Location, opts *SendOptions) (Message, error) {
+func (b *Bot) SendLocation(recipient int64, location Location, opts *SendOptions) (Message, error) {
 	params := url.Values{}
 	params.Set("chat_id", strconv.FormatInt(recipient, 10))
 	params.Set("latitude", strconv.FormatFloat(location.Lat, 'f', -1, 64))
@@ -252,7 +252,7 @@ func (b Bot) SendLocation(recipient int64, location Location, opts *SendOptions)
 }
 
 // SendVenue sends information about a venue.
-func (b Bot) SendVenue(recipient int64, venue Venue, opts *SendOptions) (Message, error) {
+func (b *Bot) SendVenue(recipient int64, venue Venue, opts *SendOptions) (Message, error) {
 	params := url.Values{}
 	params.Set("chat_id", strconv.FormatInt(recipient, 10))
 	params.Set("latitude", strconv.FormatFloat(venue.Location.Lat, 'f', -1, 64))
@@ -281,7 +281,7 @@ func (b Bot) SendVenue(recipient int64, venue Venue, opts *SendOptions) (Message
 
 // SendChatAction broadcasts type of action to recipient, such as `typing`,
 // `uploading a photo` etc.
-func (b Bot) SendChatAction(recipient int64, action Action) error {
+func (b *Bot) SendChatAction(recipient int64, action Action) error {
 	params := url.Values{}
 	params.Set("chat_id", strconv.FormatInt(recipient, 10))
 	params.Set("action", string(action))
@@ -316,7 +316,7 @@ type SendOptions struct {
 	ReplyMarkup ReplyMarkup
 }
 
-func (b Bot) GetFile(fileID string) (File, error) {
+func (b *Bot) GetFile(fileID string) (File, error) {
 	params := url.Values{}
 	params.Set("file_id", fileID)
 
@@ -338,7 +338,7 @@ func (b Bot) GetFile(fileID string) (File, error) {
 	return r.File, nil
 }
 
-func (b Bot) GetFileDownloadURL(fileID string) (string, error) {
+func (b *Bot) GetFileDownloadURL(fileID string) (string, error) {
 	f, err := b.GetFile(fileID)
 	if err != nil {
 		return "", err
@@ -348,7 +348,7 @@ func (b Bot) GetFileDownloadURL(fileID string) (string, error) {
 	return u, nil
 }
 
-func (b Bot) sendCommand(ctx context.Context, method string, params url.Values, v interface{}) error {
+func (b *Bot) sendCommand(ctx context.Context, method string, params url.Values, v interface{}) error {
 	req, err := http.NewRequest("POST", b.baseURL+method, strings.NewReader(params.Encode()))
 	if err != nil {
 		return err
@@ -374,7 +374,7 @@ func (b Bot) sendCommand(ctx context.Context, method string, params url.Values, 
 	return json.NewDecoder(resp.Body).Decode(&v)
 }
 
-func (b Bot) getMe() (User, error) {
+func (b *Bot) getMe() (User, error) {
 	var r struct {
 		OK      bool   `json:"ok"`
 		Desc    string `json:"description"`
