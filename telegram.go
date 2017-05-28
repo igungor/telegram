@@ -6,11 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"mime/multipart"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -27,48 +25,35 @@ const (
 
 // Bot represent a Telegram bot.
 type Bot struct {
-	token   string
-	baseURL string
-	client  *http.Client
+	token     string
+	baseURL   string
+	client    *http.Client
+	messageCh chan *Message
 }
 
 // New creates a new Telegram bot with the given token, which is given by
 // Botfather. See https://core.telegram.org/bots#botfather
 func New(token string) *Bot {
 	return &Bot{
-		token:   token,
-		baseURL: fmt.Sprintf("https://api.telegram.org/bot%v/", token),
-		client:  &http.Client{Timeout: 30 * time.Second},
+		token:     token,
+		baseURL:   fmt.Sprintf("https://api.telegram.org/bot%v/", token),
+		client:    &http.Client{Timeout: 30 * time.Second},
+		messageCh: make(chan *Message),
 	}
 }
 
-// Listen listens on the given address addr and returns a read-only Message
-// channel.
-func (b *Bot) Listen(addr string) <-chan Message {
-	messageCh := make(chan Message)
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+func (b *Bot) Handler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		defer w.WriteHeader(http.StatusOK)
 
 		var u Update
-		err := json.NewDecoder(req.Body).Decode(&u)
-		if err != nil {
-			log.Printf("error decoding request body: %v\n", err)
-			return
+		json.NewDecoder(r.Body).Decode(&u)
+		b.messageCh <- &u.Payload
+	}
+}
 
-		}
-		messageCh <- u.Payload
-	})
-
-	go func() {
-		// ListenAndServe always returns non-nil error
-		err := http.ListenAndServe(addr, mux)
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}()
-
-	return messageCh
+func (b *Bot) Messages() <-chan *Message {
+	return b.messageCh
 }
 
 // SetWebhook assigns bot's webhook url with the given url.
