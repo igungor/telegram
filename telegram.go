@@ -21,7 +21,7 @@ type ParseMode string
 // Parse modes
 const (
 	ModeNone     ParseMode = ""
-	ModeMarkdown ParseMode = "markdown"
+	ModeMarkdown ParseMode = "Markdown"
 )
 
 // Bot represent a Telegram bot.
