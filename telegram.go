@@ -47,7 +47,7 @@ func (b *Bot) Handler() http.HandlerFunc {
 		defer w.WriteHeader(http.StatusOK)
 
 		var u Update
-		json.NewDecoder(r.Body).Decode(&u)
+		_ = json.NewDecoder(r.Body).Decode(&u)
 		b.messageCh <- &u.Payload
 	}
 }
@@ -91,10 +91,13 @@ func (b *Bot) SendMessage(recipient int64, message string, opts *SendOptions) (M
 	var r struct {
 		OK      bool   `json:"ok"`
 		Desc    string `json:"description"`
-		ErrCode int    `json:"errorcode"`
+		ErrCode int    `json:"error_code"`
 		Message Message
 	}
-	b.sendCommand(nil, "sendMessage", params, &r)
+	err := b.sendCommand(nil, "sendMessage", params, &r)
+	if err != nil {
+		return r.Message, err
+	}
 
 	if !r.OK {
 		return Message{}, fmt.Errorf("%v (%v)", r.Desc, r.ErrCode)
@@ -351,10 +354,6 @@ func (b *Bot) sendCommand(ctx context.Context, method string, params url.Values,
 		return err
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status: %v", resp.Status)
-	}
 
 	return json.NewDecoder(resp.Body).Decode(&v)
 }
