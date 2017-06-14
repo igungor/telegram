@@ -178,6 +178,10 @@ func (b *Bot) sendFile(method string, f File, form string, params url.Values, v 
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Unexpected status code: %v", resp.StatusCode)
+	}
+
 	return json.NewDecoder(resp.Body).Decode(&v)
 }
 
