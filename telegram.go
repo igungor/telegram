@@ -81,11 +81,10 @@ func (b *Bot) SetWebhook(webhook string) error {
 // SendMessage sends text message to the recipient. Callers can send plain
 // text or markdown messages by setting mode parameter.
 func (b *Bot) SendMessage(recipient int64, message string, opts ...SendOption) (Message, error) {
-	params := url.Values{
-		"chat_id": {strconv.FormatInt(recipient, 10)},
-		"text":    {message},
-	}
-
+	const method = "sendMessage"
+	params := url.Values{}
+	params.Set("chat_id", strconv.FormatInt(recipient, 10))
+	params.Set("text", message)
 	mapSendOptions(&params, opts...)
 
 	var r struct {
@@ -116,6 +115,7 @@ func (b *Bot) forwardMessage(recipient User, message Message) (Message, error) {
 //  photo := bot.Photo{URL: "http://i.imgur.com/6S9naG6.png"}
 //  err := b.SendPhoto(recipient, photo, "sample image", nil)
 func (b *Bot) SendPhoto(recipient int64, photo Photo, opts ...SendOption) (Message, error) {
+	const method = "sendPhoto"
 	params := url.Values{}
 	params.Set("chat_id", strconv.FormatInt(recipient, 10))
 	params.Set("caption", photo.Caption)
@@ -131,12 +131,12 @@ func (b *Bot) SendPhoto(recipient int64, photo Photo, opts ...SendOption) (Messa
 	var err error
 	if photo.Exists() {
 		params.Set("photo", photo.FileID)
-		err = b.sendCommand(nil, "sendPhoto", params, &r)
+		err = b.sendCommand(nil, method, params, &r)
 	} else if photo.URL != "" {
 		params.Set("photo", photo.URL)
-		err = b.sendCommand(nil, "sendPhoto", params, &r)
+		err = b.sendCommand(nil, method, params, &r)
 	} else {
-		err = b.sendFile("sendPhoto", photo.File, "photo", params, &r)
+		err = b.sendFile(method, photo.File, "photo", params, &r)
 	}
 
 	if err != nil {
@@ -218,6 +218,7 @@ func (b *Bot) sendVoice(recipient int64, audio Audio, opts ...SendOption) (Messa
 
 // SendLocation sends location point on the map.
 func (b *Bot) SendLocation(recipient int64, location Location, opts ...SendOption) (Message, error) {
+	const method = "sendLocation"
 	params := url.Values{}
 	params.Set("chat_id", strconv.FormatInt(recipient, 10))
 	params.Set("latitude", strconv.FormatFloat(location.Lat, 'f', -1, 64))
@@ -231,7 +232,7 @@ func (b *Bot) SendLocation(recipient int64, location Location, opts ...SendOptio
 		ErrCode int     `json:"error_code"`
 		Message Message `json:"message"`
 	}
-	err := b.sendCommand(nil, "sendLocation", params, &r)
+	err := b.sendCommand(nil, method, params, &r)
 	if err != nil {
 		return Message{}, err
 	}
@@ -245,6 +246,7 @@ func (b *Bot) SendLocation(recipient int64, location Location, opts ...SendOptio
 
 // SendVenue sends information about a venue.
 func (b *Bot) SendVenue(recipient int64, venue Venue, opts ...SendOption) (Message, error) {
+	const method = "sendVenue"
 	params := url.Values{}
 	params.Set("chat_id", strconv.FormatInt(recipient, 10))
 	params.Set("latitude", strconv.FormatFloat(venue.Location.Lat, 'f', -1, 64))
@@ -260,7 +262,7 @@ func (b *Bot) SendVenue(recipient int64, venue Venue, opts ...SendOption) (Messa
 		ErrCode int     `json:"error_code"`
 		Message Message `json:"message"`
 	}
-	err := b.sendCommand(nil, "sendVenue", params, &r)
+	err := b.sendCommand(nil, method, params, &r)
 	if err != nil {
 		return Message{}, err
 	}
@@ -274,17 +276,13 @@ func (b *Bot) SendVenue(recipient int64, venue Venue, opts ...SendOption) (Messa
 // SendChatAction broadcasts type of action to recipient, such as `typing`,
 // `uploading a photo` etc.
 func (b *Bot) SendChatAction(recipient int64, action Action) error {
+	const method = "sendChatAction"
 	params := url.Values{}
 	params.Set("chat_id", strconv.FormatInt(recipient, 10))
 	params.Set("action", string(action))
 
-	var r struct {
-		OK      bool   `json:"ok"`
-		Desc    string `json:"description"`
-		ErrCode int    `json:"error_code"`
-	}
-
-	err := b.sendCommand(nil, "sendChatAction", params, &r)
+	var r response
+	err := b.sendCommand(nil, method, params, &r)
 	if err != nil {
 		return err
 
