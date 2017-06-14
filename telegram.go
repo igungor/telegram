@@ -180,8 +180,38 @@ func (b *Bot) sendFile(method string, f File, form string, params url.Values, v 
 // SendAudio sends audio files, if you want Telegram clients to display
 // them in the music player. audio must be in the .mp3 format and must not
 // exceed 50 MB in size.
-func (b *Bot) sendAudio(recipient int64, audio Audio, opts ...SendOption) (Message, error) {
-	panic("not implemented yet")
+func (b *Bot) SendAudio(recipient int64, audio Audio, opts ...SendOption) (Message, error) {
+	const method = "sendAudio"
+	params := url.Values{}
+	params.Set("chat_id", strconv.FormatInt(recipient, 10))
+	params.Set("caption", audio.Caption)
+
+	mapSendOptions(&params, opts...)
+	var r struct {
+		response
+		Message Message `json:"result"`
+	}
+
+	var err error
+	if audio.Exists() {
+		params.Set("audio", audio.FileID)
+		err = b.sendCommand(nil, method, params, &r)
+	} else if audio.URL != "" {
+		params.Set("audio", audio.URL)
+		err = b.sendCommand(nil, method, params, &r)
+	} else {
+		err = b.sendFile(method, audio.File, "audio", params, &r)
+	}
+
+	if err != nil {
+		return Message{}, err
+	}
+
+	if !r.OK {
+		return Message{}, fmt.Errorf("%v (%v)", r.Desc, r.ErrCode)
+	}
+
+	return r.Message, nil
 }
 
 // SendDocument sends general files. Documents must not exceed 50 MB in size.

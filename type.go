@@ -218,6 +218,7 @@ type Audio struct {
 	Performer string `json:"performer"`
 	Title     string `json:"title"`
 	MimeType  string `json:"mime_type"`
+	Caption   string `json:"caption"`
 }
 
 // Document represents a general file (as opposed to photos and audio files).
