@@ -61,11 +61,7 @@ func (b *Bot) SetWebhook(webhook string) error {
 	params := url.Values{}
 	params.Set("url", webhook)
 
-	var r struct {
-		OK      bool   `json:"ok"`
-		Desc    string `json:"description"`
-		ErrCode int    `json:"error_code"`
-	}
+	var r response
 	err := b.sendCommand(nil, "setWebhook", params, &r)
 	if err != nil {
 		return err
@@ -88,10 +84,8 @@ func (b *Bot) SendMessage(recipient int64, message string, opts ...SendOption) (
 	mapSendOptions(&params, opts...)
 
 	var r struct {
-		OK      bool   `json:"ok"`
-		Desc    string `json:"description"`
-		ErrCode int    `json:"error_code"`
-		Message Message
+		response
+		Message Message `json:"result"`
 	}
 	err := b.sendCommand(nil, "sendMessage", params, &r)
 	if err != nil {
@@ -122,10 +116,8 @@ func (b *Bot) SendPhoto(recipient int64, photo Photo, opts ...SendOption) (Messa
 
 	mapSendOptions(&params, opts...)
 	var r struct {
-		OK      bool    `json:"ok"`
-		Desc    string  `json:"description"`
-		ErrCode int     `json:"error_code"`
-		Message Message `json:"message"`
+		response
+		Message Message `json:"result"`
 	}
 
 	var err error
@@ -179,7 +171,7 @@ func (b *Bot) sendFile(method string, f File, form string, params url.Values, v 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Unexpected status code: %v", resp.StatusCode)
+		return fmt.Errorf("unexpected status code: %v", resp.StatusCode)
 	}
 
 	return json.NewDecoder(resp.Body).Decode(&v)
@@ -227,10 +219,8 @@ func (b *Bot) SendLocation(recipient int64, location Location, opts ...SendOptio
 	mapSendOptions(&params, opts...)
 
 	var r struct {
-		OK      bool    `json:"ok"`
-		Desc    string  `json:"description"`
-		ErrCode int     `json:"error_code"`
-		Message Message `json:"message"`
+		response
+		Message Message `json:"result"`
 	}
 	err := b.sendCommand(nil, method, params, &r)
 	if err != nil {
@@ -257,10 +247,8 @@ func (b *Bot) SendVenue(recipient int64, venue Venue, opts ...SendOption) (Messa
 	mapSendOptions(&params, opts...)
 
 	var r struct {
-		OK      bool    `json:"ok"`
-		Desc    string  `json:"description"`
-		ErrCode int     `json:"error_code"`
-		Message Message `json:"message"`
+		response
+		Message Message `json:"result"`
 	}
 	err := b.sendCommand(nil, method, params, &r)
 	if err != nil {
@@ -353,10 +341,8 @@ func (b *Bot) GetFile(fileID string) (File, error) {
 	params.Set("file_id", fileID)
 
 	var r struct {
-		OK      bool   `json:"ok"`
-		Desc    string `json:"description"`
-		ErrCode int    `json:"error_code"`
-		File    File   `json:"result"`
+		response
+		File File `json:"result"`
 	}
 	err := b.sendCommand(nil, "getFile", params, &r)
 	if err != nil {
@@ -399,15 +385,15 @@ func (b *Bot) sendCommand(ctx context.Context, method string, params url.Values,
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %v", resp.StatusCode)
+	}
 	return json.NewDecoder(resp.Body).Decode(&v)
 }
 
 func (b *Bot) getMe() (User, error) {
 	var r struct {
-		OK      bool   `json:"ok"`
-		Desc    string `json:"description"`
-		ErrCode int    `json:"error_code"`
-
+		response
 		User User `json:"result"`
 	}
 	err := b.sendCommand(nil, "getMe", url.Values{}, &r)
@@ -449,4 +435,11 @@ func mapSendOptions(m *url.Values, opts ...SendOption) {
 	}
 
 	// TODO: map ReplyMarkup options as well
+}
+
+// response is a common response structure.
+type response struct {
+	OK      bool   `json:"ok"`
+	Desc    string `json:"description"`
+	ErrCode int    `json:"error_code"`
 }
