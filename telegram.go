@@ -439,13 +439,11 @@ func (b *Bot) getMe() (User, error) {
 }
 
 func mapSendOptions(m *url.Values, opts ...SendOption) {
-	if len(opts) == 0 {
-		return
-	}
-
 	var o sendOptions
 	for _, opt := range opts {
-		opt(&o)
+		if opt != nil {
+			opt(&o)
+		}
 	}
 
 	if o.replyTo != 0 {
