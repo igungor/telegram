@@ -462,7 +462,10 @@ func mapSendOptions(m *url.Values, opts ...SendOption) {
 		m.Set("parse_mode", string(o.parseMode))
 	}
 
-	// TODO: map ReplyMarkup options as well
+	if o.replyMarkup.Keyboard != nil {
+		kb, _ := json.Marshal(o.replyMarkup)
+		m.Set("reply_markup", string(kb))
+	}
 }
 
 // response is a common response structure.
