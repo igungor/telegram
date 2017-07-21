@@ -37,7 +37,7 @@ func New(token string) *Bot {
 	return &Bot{
 		token:     token,
 		baseURL:   fmt.Sprintf("https://api.telegram.org/bot%v/", token),
-		client:    &http.Client{Timeout: 30 * time.Second},
+		client:    &http.Client{Timeout: 5 * time.Minute},
 		messageCh: make(chan *Message),
 	}
 }
