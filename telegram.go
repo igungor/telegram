@@ -56,7 +56,7 @@ func (b *Bot) Messages() <-chan *Message {
 	return b.messageCh
 }
 
-// SetWebhook assigns bot's webhook url with the given url.
+// SetWebhook assigns bot's webhook URL with the given URL.
 func (b *Bot) SetWebhook(webhook string) error {
 	params := url.Values{}
 	params.Set("url", webhook)
