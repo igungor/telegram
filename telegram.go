@@ -14,16 +14,6 @@ import (
 	"time"
 )
 
-// ParseMode determines the markup of the text of the message.
-type ParseMode string
-
-// Parse modes
-const (
-	ModeNone     ParseMode = ""
-	ModeMarkdown ParseMode = "Markdown"
-	ModeHTML     ParseMode = "HTML"
-)
-
 // Bot represent a Telegram bot.
 type Bot struct {
 	token     string

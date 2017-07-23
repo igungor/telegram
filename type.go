@@ -8,6 +8,16 @@ import (
 	"time"
 )
 
+// ParseMode determines the markup of the text of the message.
+type ParseMode string
+
+// Parse modes
+const (
+	ModeNone     ParseMode = ""
+	ModeMarkdown ParseMode = "Markdown"
+	ModeHTML     ParseMode = "HTML"
+)
+
 // ChatAction represents bot activity.
 type ChatAction string
 
